@@ -1,9 +1,8 @@
 name: Validate JSON-RPC Relay
 
 on:
-  workflow_dispatch:
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   validate-json-rpc-relay:
@@ -23,9 +22,9 @@ jobs:
           echo "Account ID: ${{ steps.solo.outputs.accountId }}"
           
           # Allow time for port-forwarding to establish
-          sleep 10
+          sleep 15
 
-          # Test eth_chainId method
+          # Test eth_chainId method (local network chain ID is 0x127)
           RESPONSE=$(curl -s -w "%{http_code}" -X POST \
             http://localhost:7546 \
             -H "Content-Type: application/json" \
@@ -36,11 +35,11 @@ jobs:
             echo "❌ Error: Relay request failed (HTTP $RESPONSE)"
             cat response.json
             exit 1
-          elif ! grep -q "0x12a" response.json; then
-            echo "❌ Error: Unexpected chain ID"
+          elif ! grep -q "0x127" response.json; then
+            echo "❌ Error: Unexpected chain ID - expected local network (0x127)"
             cat response.json
             exit 1
           else
-            echo "✅ Relay operational - correct chain ID detected"
+            echo "✅ Relay operational - correct local chain ID detected"
             cat response.json
           fi
