@@ -18,35 +18,35 @@ jobs:
         id: solo
 
       - name: ✅ Validate JSON-RPC Relay
-  run: |
-    echo "Account ID: ${{ steps.solo.outputs.accountId }}"
-    
-    # Verify port-forward is working
-    echo "Checking port 7546 availability..."
-    timeout 20 bash -c 'while ! nc -z localhost 7546; do sleep 1; done' || {
-      echo "❌ Port 7546 not forwarded properly"
-      exit 1
-    }
+        run: |
+          echo "Account ID: ${{ steps.solo.outputs.accountId }}"
+          
+          # Verify port-forward is working
+          echo "Checking port 7546 availability..."
+          timeout 20 bash -c 'while ! nc -z localhost 7546; do sleep 1; done' || {
+            echo "❌ Port 7546 not forwarded properly"
+            exit 1
+          }
 
-    # Test with retries
-    for i in {1..5}; do
-      RESPONSE=$(curl -s -w "%{http_code}" -X POST \
-        http://localhost:7546 \
-        -H "Content-Type: application/json" \
-        -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
-        -o response.json)
-      
-      if [ "$RESPONSE" -eq 200 ] && grep -q "0x127" response.json; then
-        echo "✅ Relay operational - correct local chain ID detected"
-        cat response.json
-        exit 0
-      fi
-      
-      echo "Attempt $i failed, retrying in 5 seconds..."
-      sleep 5
-    done
+          # Test with retries
+          for i in {1..5}; do
+            RESPONSE=$(curl -s -w "%{http_code}" -X POST \
+              http://localhost:7546 \
+              -H "Content-Type: application/json" \
+              -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
+              -o response.json)
+            
+            if [ "$RESPONSE" -eq 200 ] && grep -q "0x127" response.json; then
+              echo "✅ Relay operational - correct local chain ID detected"
+              cat response.json
+              exit 0
+            fi
+            
+            echo "Attempt $i failed, retrying in 5 seconds..."
+            sleep 5
+          done
 
-    echo "❌ Final attempt failed:"
-    echo "HTTP code: $RESPONSE"
-    cat response.json
-    exit 1
+          echo "❌ Final attempt failed:"
+          echo "HTTP code: $RESPONSE"
+          cat response.json
+          exit 1
