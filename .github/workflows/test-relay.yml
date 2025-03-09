@@ -1,0 +1,46 @@
+name: Validate JSON-RPC Relay
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-json-rpc-relay:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚀 Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Hedera Solo with JSON-RPC-Relay
+        uses: ./
+        with:
+          installRelay: true
+        id: solo
+
+      - name: ✅ Validate JSON-RPC Relay
+        run: |
+          echo "Account ID: ${{ steps.solo.outputs.accountId }}"
+          
+          # Allow time for port-forwarding to establish
+          sleep 10
+
+          # Test eth_chainId method
+          RESPONSE=$(curl -s -w "%{http_code}" -X POST \
+            http://localhost:7546 \
+            -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
+            -o response.json)
+
+          if [ "$RESPONSE" -ne 200 ]; then
+            echo "❌ Error: Relay request failed (HTTP $RESPONSE)"
+            cat response.json
+            exit 1
+          elif ! grep -q "0x12a" response.json; then
+            echo "❌ Error: Unexpected chain ID"
+            cat response.json
+            exit 1
+          else
+            echo "✅ Relay operational - correct chain ID detected"
+            cat response.json
+          fi
