@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - master
-    paths:
-      - 'relay/**'
-      - '.github/workflows/jsonRpcRelay.yml'
 
 jobs:
   test-json-rpc-relay:
