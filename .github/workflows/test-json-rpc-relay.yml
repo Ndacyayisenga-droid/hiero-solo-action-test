@@ -43,7 +43,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y redis-server
           sudo systemctl start redis-server
-          # Check if Redis is running
           redis-cli ping
 
       - name: Start Relay Server
@@ -57,12 +56,12 @@ jobs:
           for i in {1..10}; do
             RESPONSE=$(curl -s -X POST http://localhost:7546 \
               -H "Content-Type: application/json" \
-              -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}')
-            if [ -n "$RESPONSE" ]; then
+              -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}')
+            if [ -n "$RESPONSE" ] && echo "$RESPONSE" | grep -q "result"; then
               echo "Server is ready: $RESPONSE"
               exit 0
             fi
-            echo "Attempt $i: no response yet, waiting..."
+            echo "Attempt $i: no valid response yet, waiting..."
             sleep 3
           done
           echo "Relay server did not start in time."
@@ -72,4 +71,4 @@ jobs:
         run: |
           curl -v -X POST http://localhost:7546 \
             -H "Content-Type: application/json" \
-            -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+            -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'
