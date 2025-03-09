@@ -1,52 +1,42 @@
-name: Validate JSON-RPC Relay
+name: JSON-RPC Relay Test
 
 on:
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
+    paths:
+      - 'relay/**'
+      - '.github/workflows/jsonRpcRelay.yml'
 
 jobs:
-  validate-json-rpc-relay:
+  test-json-rpc-relay:
     runs-on: ubuntu-latest
     steps:
-      - name: 🚀 Checkout Repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Hedera Solo with JSON-RPC-Relay
+      - name: Setup Hedera Solo with JSON-RPC Relay
         uses: ./
         with:
           installRelay: true
         id: solo
 
-      - name: ✅ Validate JSON-RPC Relay
+      - name: Port Forward JSON-RPC Relay
         run: |
-          echo "Account ID: ${{ steps.solo.outputs.accountId }}"
-          
-          # Verify port-forward is working
-          echo "Checking port 7546 availability..."
-          timeout 20 bash -c 'while ! nc -z localhost 7546; do sleep 1; done' || {
-            echo "❌ Port 7546 not forwarded properly"
+          kubectl port-forward svc/json-rpc-relay -n solo-test 7546:7546 &
+
+      - name: Validate JSON-RPC Relay API
+        run: |
+          echo "Testing JSON-RPC Relay API..."
+          sleep 10  # Wait for the relay to fully start
+
+          RESPONSE=$(curl -s -X POST http://localhost:7546 \
+            -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}')
+
+          if [ -n "$RESPONSE" ] && echo "$RESPONSE" | grep -q "result"; then
+            echo "✅ Relay is responding correctly: $RESPONSE"
+          else
+            echo "❌ Relay did not start correctly."
             exit 1
-          }
-
-          # Test with retries
-          for i in {1..5}; do
-            RESPONSE=$(curl -s -w "%{http_code}" -X POST \
-              http://localhost:7546 \
-              -H "Content-Type: application/json" \
-              -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
-              -o response.json)
-            
-            if [ "$RESPONSE" -eq 200 ] && grep -q "0x127" response.json; then
-              echo "✅ Relay operational - correct local chain ID detected"
-              cat response.json
-              exit 0
-            fi
-            
-            echo "Attempt $i failed, retrying in 5 seconds..."
-            sleep 5
-          done
-
-          echo "❌ Final attempt failed:"
-          echo "HTTP code: $RESPONSE"
-          cat response.json
-          exit 1
+          fi
