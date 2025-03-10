@@ -18,10 +18,6 @@ jobs:
           installRelay: true
         id: solo
 
-      - name: Port Forward JSON-RPC Relay
-        run: |
-          kubectl port-forward svc/json-rpc-relay -n solo-test 7546:7546 &
-
       - name: Validate JSON-RPC Relay API
         run: |
           echo "Testing JSON-RPC Relay API..."
